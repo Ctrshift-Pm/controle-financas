@@ -1,15 +1,15 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
-import { getExpenses, getMonthlyRevenue } from "@/lib/store";
-import { CATEGORY_LABELS, ExpenseCategory } from "@/lib/types";
+import { getMonthlyRevenue } from "@/lib/store";
+import { CATEGORY_LABELS, ExpenseCategory, Expense } from "@/lib/types";
 
 const MONTHS = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-interface Props { year: number; month: number; }
+interface Props { allExpenses: Expense[]; year: number; month: number; }
 
 function getMonthKey(y: number, m: number) {
   return `${y}-${String(m + 1).padStart(2, "0")}`;

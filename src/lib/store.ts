@@ -22,11 +22,11 @@ export async function getExpenses(): Promise<Expense[]> {
   return (data || []).map((row: any) => ({
     id: row.id,
     date: row.date,
-    category: row.category,
+    category: row.category as Expense["category"],
     description: row.description,
     vehicle: row.vehicle,
     amount: Number(row.amount),
-    status: row.status,
+    status: row.status as Expense["status"],
     source: row.source,
   }));
 }
