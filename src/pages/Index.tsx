@@ -105,11 +105,10 @@ const Index = () => {
   };
 
   const driverDailiesTotal = useMemo(() => {
-    void refreshKey;
-    return getDriverDailies()
+    return allDriverDailies
       .filter((d) => { const dt = new Date(d.date); return dt.getFullYear() === year && dt.getMonth() === month; })
       .reduce((s, d) => s + d.routes * d.valuePerRoute, 0);
-  }, [refreshKey, year, month]);
+  }, [allDriverDailies, year, month]);
 
   return (
     <div className="min-h-screen bg-background">
