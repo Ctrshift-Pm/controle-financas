@@ -16,7 +16,8 @@ import { MonthComparison } from "@/components/MonthComparison";
 import { VehicleManager } from "@/components/VehicleManager";
 import { DriverDailies } from "@/components/DriverDailies";
 import { RecurringReminders } from "@/components/RecurringReminders";
-import { deleteExpense, getMonthlyRevenue, getVehicleName, updateExpenseStatus, getDriverDailies } from "@/lib/store";
+import { deleteExpense, getMonthlyRevenue, getVehicleName, updateExpenseStatus } from "@/lib/store";
+import { useDriverDailies } from "@/hooks/use-driver-dailies";
 import { useExpenses } from "@/hooks/use-expenses";
 import { getVehicles } from "@/lib/types";
 import { toast } from "sonner";
@@ -47,11 +48,13 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("lancamentos");
 
   const { expenses: allExpenses, refresh: refreshExpenses } = useExpenses();
+  const { dailies: allDriverDailies, refresh: refreshDailies } = useDriverDailies();
 
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
     refreshExpenses();
-  }, [refreshExpenses]);
+    refreshDailies();
+  }, [refreshExpenses, refreshDailies]);
 
   const monthKey = getMonthKey(year, month);
 
@@ -102,11 +105,10 @@ const Index = () => {
   };
 
   const driverDailiesTotal = useMemo(() => {
-    void refreshKey;
-    return getDriverDailies()
+    return allDriverDailies
       .filter((d) => { const dt = new Date(d.date); return dt.getFullYear() === year && dt.getMonth() === month; })
       .reduce((s, d) => s + d.routes * d.valuePerRoute, 0);
-  }, [refreshKey, year, month]);
+  }, [allDriverDailies, year, month]);
 
   return (
     <div className="min-h-screen bg-background">

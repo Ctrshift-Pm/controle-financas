@@ -222,7 +222,21 @@ Se não parecer nenhuma dessas ações, use action "invalid".`,
         return new Response(twiml, { headers: { ...corsHeaders, "Content-Type": "text/xml" } });
       }
 
-      // Check if there's already a pending diaria expense for this driver this month
+      // 1. Insert into driver_dailies table (individual record)
+      const { error: dailyErr } = await supabase.from("driver_dailies").insert({
+        date: today,
+        driver_name: driverName.trim(),
+        routes: numRoutes,
+        value_per_route: valuePerRoute,
+        vehicle: vehicleName,
+        source: "whatsapp",
+      });
+
+      if (dailyErr) {
+        console.error("Error inserting driver_daily:", dailyErr);
+      }
+
+      // 2. Sync the consolidated expense (pending payment)
       const now = new Date();
       const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
       const nextMonth = now.getMonth() === 11
@@ -233,7 +247,6 @@ Se não parecer nenhuma dessas ações, use action "invalid".`,
         .from("expenses")
         .select("*")
         .eq("category", "diaria")
-        .eq("status", "pendente")
         .ilike("description", `%${driverName.trim()}%`)
         .gte("date", monthStart)
         .lt("date", nextMonth)
@@ -241,7 +254,6 @@ Se não parecer nenhuma dessas ações, use action "invalid".`,
         .limit(1);
 
       if (existing && existing.length > 0) {
-        // Update existing: add routes value
         const item = existing[0];
         const newAmount = Number(item.amount) + totalAmount;
         await supabase.from("expenses").update({ amount: newAmount }).eq("id", item.id);
@@ -250,7 +262,6 @@ Se não parecer nenhuma dessas ações, use action "invalid".`,
         const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>✅ Diária atualizada!\n👤 ${driverName}\n🛣️ +${numRoutes} rota${numRoutes > 1 ? "s" : ""} (R$ ${totalAmount.toFixed(2)})\n💰 Total acumulado: R$ ${amtStr}\n📂 Pendente</Message></Response>`;
         return new Response(twiml, { headers: { ...corsHeaders, "Content-Type": "text/xml" } });
       } else {
-        // Create new pending expense
         const monthLabel = `${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
         const { error } = await supabase.from("expenses").insert({
           date: today,

@@ -153,7 +153,64 @@ export function removeDriver(name: string): void {
   localStorage.setItem(DRIVERS_KEY, JSON.stringify(drivers));
 }
 
-// === Driver Dailies ===
+// === Driver Dailies (Supabase) ===
+export async function getDriverDailiesAsync(): Promise<DriverDaily[]> {
+  const { data, error } = await supabase
+    .from("driver_dailies")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching driver dailies:", error);
+    return [];
+  }
+
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    date: row.date,
+    driverName: row.driver_name,
+    routes: Number(row.routes),
+    valuePerRoute: Number(row.value_per_route),
+    vehicle: row.vehicle,
+    source: row.source,
+  }));
+}
+
+export async function saveDriverDailyAsync(daily: Omit<DriverDaily, "id">): Promise<DriverDaily | null> {
+  const { data, error } = await supabase
+    .from("driver_dailies")
+    .insert({
+      date: daily.date,
+      driver_name: daily.driverName,
+      routes: daily.routes,
+      value_per_route: daily.valuePerRoute,
+      vehicle: daily.vehicle,
+      source: (daily as any).source || "manual",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error saving driver daily:", error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    date: data.date,
+    driverName: data.driver_name,
+    routes: Number(data.routes),
+    valuePerRoute: Number(data.value_per_route),
+    vehicle: data.vehicle,
+  };
+}
+
+export async function deleteDriverDailyAsync(id: string): Promise<void> {
+  const { error } = await supabase.from("driver_dailies").delete().eq("id", id);
+  if (error) console.error("Error deleting driver daily:", error);
+}
+
+// Legacy localStorage functions kept for backward compat
 export function getDriverDailies(): DriverDaily[] {
   const raw = localStorage.getItem(DAILIES_KEY);
   if (!raw) return [];

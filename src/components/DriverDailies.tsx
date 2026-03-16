@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getVehicles, Expense } from "@/lib/types";
-import { getDriverDailies, saveDriverDaily, deleteDriverDaily, getVehicleName, getDrivers, addDriver, removeDriver, saveExpense, updateExpenseStatus, deleteExpense } from "@/lib/store";
+import { saveDriverDailyAsync, deleteDriverDailyAsync, getVehicleName, getDrivers, addDriver, removeDriver, saveExpense, updateExpenseStatus, deleteExpense } from "@/lib/store";
+import { useDriverDailies } from "@/hooks/use-driver-dailies";
 import { toast } from "sonner";
 
 interface Props {
@@ -27,19 +28,17 @@ export function DriverDailies({ year, month, expenses, onUpdated }: Props) {
   const [vehicle, setVehicle] = useState("Van 01");
   const [newDriver, setNewDriver] = useState("");
 
+  const { dailies: allDailies, refresh: refreshDailies } = useDriverDailies();
+
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
+    refreshDailies();
     onUpdated();
-  }, [onUpdated]);
+  }, [onUpdated, refreshDailies]);
 
   const drivers = useMemo(() => {
     void refreshKey;
     return getDrivers();
-  }, [refreshKey]);
-
-  const allDailies = useMemo(() => {
-    void refreshKey;
-    return getDriverDailies();
   }, [refreshKey]);
 
   const filtered = useMemo(() => {
@@ -117,7 +116,7 @@ export function DriverDailies({ year, month, expenses, onUpdated }: Props) {
     if (!drivers.includes(driverName.trim())) {
       addDriver(driverName.trim());
     }
-    saveDriverDaily({
+    await saveDriverDailyAsync({
       date,
       driverName: driverName.trim(),
       routes: numRoutes,
@@ -141,7 +140,7 @@ export function DriverDailies({ year, month, expenses, onUpdated }: Props) {
 
   const handleDelete = async (id: string) => {
     const daily = allDailies.find((d) => d.id === id);
-    deleteDriverDaily(id);
+    await deleteDriverDailyAsync(id);
 
     if (daily) {
       const remainingTotal = filtered
