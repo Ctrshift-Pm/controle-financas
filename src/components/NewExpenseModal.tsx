@@ -19,11 +19,11 @@ export function NewExpenseModal({ open, onClose, onSaved }: Props) {
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState<"pago" | "pendente">("pago");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const numAmount = parseFloat(amount.replace(",", "."));
     if (isNaN(numAmount) || numAmount <= 0) { toast.error("Informe um valor válido."); return; }
-    saveExpense({ date, category, description, vehicle, amount: numAmount, status });
+    await saveExpense({ date, category, description, vehicle, amount: numAmount, status });
     toast(`Gasto registrado: R$ ${numAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${CATEGORY_LABELS[category]})`);
     setDescription(""); setAmount(""); onSaved(); onClose();
   };
