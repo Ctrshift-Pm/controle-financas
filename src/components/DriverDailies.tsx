@@ -140,7 +140,7 @@ export function DriverDailies({ year, month, expenses, onUpdated }: Props) {
 
   const handleDelete = async (id: string) => {
     const daily = allDailies.find((d) => d.id === id);
-    deleteDriverDaily(id);
+    await deleteDriverDailyAsync(id);
 
     if (daily) {
       const remainingTotal = filtered
