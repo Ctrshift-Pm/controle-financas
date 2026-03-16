@@ -102,7 +102,7 @@ export function RecurringReminders({ onUpdated, driverDailiesTotal = 0 }: Props)
   const [day, setDay] = useState("5");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("imposto");
-  const { expenses: allExpenses } = useExpenses();
+  const syncingRef = useRef(false);
 
   useEffect(() => {
     seedDefaults();
@@ -120,16 +120,24 @@ export function RecurringReminders({ onUpdated, driverDailiesTotal = 0 }: Props)
     });
   }, [refreshKey, driverDailiesTotal]);
 
-  // Auto-sync: create pending expenses for recurring costs at start of each month
+  // Auto-sync: create pending expenses for recurring costs — once per month only
   useEffect(() => {
-    if (allExpenses.length === 0 && reminders.length === 0) return;
-    syncRecurringToExpenses(reminders, allExpenses).then((created) => {
+    if (reminders.length === 0 || syncingRef.current) return;
+
+    const currentMonth = getMonthKey();
+    const lastSync = localStorage.getItem("recurring-sync-month");
+    if (lastSync === currentMonth) return;
+
+    syncingRef.current = true;
+    syncRecurringToExpenses(reminders).then((created) => {
+      localStorage.setItem("recurring-sync-month", currentMonth);
+      syncingRef.current = false;
       if (created) {
         onUpdated();
         toast.success("Custos fixos lançados como pagamentos pendentes do mês.");
       }
-    });
-  }, [reminders, allExpenses]); // eslint-disable-line react-hooks/exhaustive-deps
+    }).catch(() => { syncingRef.current = false; });
+  }, [reminders]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = () => {
     setRefreshKey((k) => k + 1);
