@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ExpenseCategory, CATEGORY_LABELS, VEHICLES } from "@/lib/types";
+import { ExpenseCategory, CATEGORY_LABELS, SORTED_CATEGORIES, VEHICLES } from "@/lib/types";
 import { saveExpense } from "@/lib/store";
 import { toast } from "sonner";
 
@@ -80,7 +80,7 @@ export function NewExpenseModal({ open, onClose, onSaved }: Props) {
                 <Select value={category} onValueChange={(v) => setCategory(v as ExpenseCategory)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                    {SORTED_CATEGORIES.map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
                   </SelectContent>
