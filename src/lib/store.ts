@@ -36,11 +36,11 @@ export async function saveExpense(expense: Omit<Expense, "id">): Promise<Expense
     .from("expenses")
     .insert({
       date: expense.date,
-      category: expense.category,
+      category: expense.category as string,
       description: expense.description,
       vehicle: expense.vehicle,
       amount: expense.amount,
-      status: expense.status,
+      status: expense.status as string,
       source: "manual",
     })
     .select()

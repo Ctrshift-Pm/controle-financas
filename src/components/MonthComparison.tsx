@@ -32,11 +32,11 @@ function DiffBadge({ current, previous }: { current: number; previous: number })
   );
 }
 
-export function MonthComparison({ year, month }: Props) {
+export function MonthComparison({ allExpenses, year, month }: Props) {
   const prev = getPrev(year, month);
 
   const comparison = useMemo(() => {
-    const expenses = getExpenses();
+    const expenses = allExpenses;
     const curKey = getMonthKey(year, month);
     const prevKey = getMonthKey(prev.y, prev.m);
     const curRevenue = getMonthlyRevenue(curKey);
