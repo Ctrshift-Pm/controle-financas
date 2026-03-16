@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, ChevronLeft, ChevronRight, BarChart3, FileText, Bell, Users, GitCompare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,8 @@ import { MonthComparison } from "@/components/MonthComparison";
 import { VehicleManager } from "@/components/VehicleManager";
 import { DriverDailies } from "@/components/DriverDailies";
 import { RecurringReminders } from "@/components/RecurringReminders";
-import { getExpenses, deleteExpense, getMonthlyRevenue, getVehicleName, updateExpenseStatus } from "@/lib/store";
+import { deleteExpense, getMonthlyRevenue, getVehicleName, updateExpenseStatus } from "@/lib/store";
+import { useExpenses } from "@/hooks/use-expenses";
 import { getVehicles } from "@/lib/types";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
@@ -45,18 +46,18 @@ const Index = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState("lancamentos");
 
-  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+  const { expenses: allExpenses, refresh: refreshExpenses } = useExpenses();
+
+  const refresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    refreshExpenses();
+  }, [refreshExpenses]);
 
   const monthKey = getMonthKey(year, month);
 
   const vehicles = useMemo(() => {
     void refreshKey;
     return getVehicles();
-  }, [refreshKey]);
-
-  const allExpenses = useMemo(() => {
-    void refreshKey;
-    return getExpenses();
   }, [refreshKey]);
 
   const filtered = useMemo(() => {
@@ -86,13 +87,13 @@ const Index = () => {
     else setMonth(month + 1);
   };
 
-  const handleDelete = (id: string) => {
-    deleteExpense(id);
+  const handleDelete = async (id: string) => {
+    await deleteExpense(id);
     refresh();
   };
 
-  const handleMarkPaid = (id: string) => {
-    updateExpenseStatus(id, "pago");
+  const handleMarkPaid = async (id: string) => {
+    await updateExpenseStatus(id, "pago");
     toast.success("Pagamento concluído!");
     refresh();
   };
@@ -267,7 +268,7 @@ const Index = () => {
             <TabsContent value="graficos" key="graficos" asChild>
               <motion.div variants={tabAnimVariants} initial="hidden" animate="visible" exit="exit">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <RevenueChart year={year} />
+                  <RevenueChart allExpenses={allExpenses} year={year} />
                   <CostPieChart expenses={filtered} />
                 </div>
               </motion.div>
@@ -275,7 +276,7 @@ const Index = () => {
 
             <TabsContent value="comparativo" key="comparativo" asChild>
               <motion.div variants={tabAnimVariants} initial="hidden" animate="visible" exit="exit">
-                <MonthComparison year={year} month={month} />
+                <MonthComparison allExpenses={allExpenses} year={year} month={month} />
               </motion.div>
             </TabsContent>
           </AnimatePresence>

@@ -3,18 +3,19 @@ import { motion } from "framer-motion";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
-import { getExpenses, getMonthlyRevenue } from "@/lib/store";
+import { getMonthlyRevenue } from "@/lib/store";
+import { Expense } from "@/lib/types";
 
 const MONTH_LABELS = [
   "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
   "Jul", "Ago", "Set", "Out", "Nov", "Dez",
 ];
 
-interface Props { year: number; }
+interface Props { allExpenses: Expense[]; year: number; }
 
-export function RevenueChart({ year }: Props) {
+export function RevenueChart({ allExpenses, year }: Props) {
   const data = useMemo(() => {
-    const expenses = getExpenses();
+    const expenses = allExpenses;
     return MONTH_LABELS.map((label, i) => {
       const key = `${year}-${String(i + 1).padStart(2, "0")}`;
       const revenue = getMonthlyRevenue(key);
