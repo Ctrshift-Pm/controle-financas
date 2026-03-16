@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
 import { getMonthlyRevenue } from "@/lib/store";
 import { CATEGORY_LABELS, ExpenseCategory, Expense } from "@/lib/types";
 
@@ -19,6 +20,16 @@ function getPrev(y: number, m: number) {
   return m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 };
 }
 
+function getMonthsBack(y: number, m: number, count: number) {
+  const result: { y: number; m: number }[] = [];
+  let cy = y, cm = m;
+  for (let i = 0; i < count; i++) {
+    result.unshift({ y: cy, m: cm });
+    if (cm === 0) { cy--; cm = 11; } else { cm--; }
+  }
+  return result;
+}
+
 function DiffBadge({ current, previous }: { current: number; previous: number }) {
   if (previous === 0 && current === 0) return <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
   const diff = previous === 0 ? 100 : ((current - previous) / previous) * 100;
@@ -32,89 +43,156 @@ function DiffBadge({ current, previous }: { current: number; previous: number })
   );
 }
 
+const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload) return null;
+  return (
+    <div className="rounded-lg border bg-card p-3 shadow-lg text-sm">
+      <p className="font-semibold mb-1">{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.dataKey} style={{ color: p.color }}>
+          {p.name}: {fmt(p.value)}
+        </p>
+      ))}
+    </div>
+  );
+};
+
 export function MonthComparison({ allExpenses, year, month }: Props) {
   const prev = getPrev(year, month);
 
+  // 6-month trend data
+  const trendData = useMemo(() => {
+    const months = getMonthsBack(year, month, 6);
+    return months.map(({ y, m }) => {
+      const key = getMonthKey(y, m);
+      const revenue = getMonthlyRevenue(key);
+      const expenses = allExpenses
+        .filter((e) => { const d = new Date(e.date); return d.getFullYear() === y && d.getMonth() === m; })
+        .reduce((s, e) => s + e.amount, 0);
+      return {
+        name: `${MONTHS[m].substring(0, 3)}/${y.toString().slice(-2)}`,
+        Receita: revenue,
+        Custos: expenses,
+        Lucro: revenue - expenses,
+      };
+    });
+  }, [allExpenses, year, month]);
+
+  // Category comparison current vs previous
+  const categoryData = useMemo(() => {
+    const curExpenses = allExpenses.filter((e) => { const d = new Date(e.date); return d.getFullYear() === year && d.getMonth() === month; });
+    const prevExpenses = allExpenses.filter((e) => { const d = new Date(e.date); return d.getFullYear() === prev.y && d.getMonth() === prev.m; });
+    const categories = new Set<ExpenseCategory>();
+    [...curExpenses, ...prevExpenses].forEach((e) => categories.add(e.category));
+    return Array.from(categories)
+      .map((cat) => ({
+        name: CATEGORY_LABELS[cat],
+        "Mês Atual": curExpenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0),
+        "Mês Anterior": prevExpenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  }, [allExpenses, year, month, prev.y, prev.m]);
+
+  // Summary comparison
   const comparison = useMemo(() => {
-    const expenses = allExpenses;
     const curKey = getMonthKey(year, month);
     const prevKey = getMonthKey(prev.y, prev.m);
     const curRevenue = getMonthlyRevenue(curKey);
     const prevRevenue = getMonthlyRevenue(prevKey);
-    const curExpenses = expenses.filter((e) => { const d = new Date(e.date); return d.getFullYear() === year && d.getMonth() === month; });
-    const prevExpenses = expenses.filter((e) => { const d = new Date(e.date); return d.getFullYear() === prev.y && d.getMonth() === prev.m; });
-    const curTotal = curExpenses.reduce((s, e) => s + e.amount, 0);
-    const prevTotal = prevExpenses.reduce((s, e) => s + e.amount, 0);
-    const categories = new Set<ExpenseCategory>();
-    [...curExpenses, ...prevExpenses].forEach((e) => categories.add(e.category));
-    const catData = Array.from(categories)
-      .map((cat) => ({
-        category: cat,
-        current: curExpenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0),
-        previous: prevExpenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0),
-      }))
-      .sort((a, b) => CATEGORY_LABELS[a.category].localeCompare(CATEGORY_LABELS[b.category], "pt-BR"));
-    return { curRevenue, prevRevenue, curTotal, prevTotal, catData };
-  }, [year, month, prev.y, prev.m]);
+    const curTotal = allExpenses.filter((e) => { const d = new Date(e.date); return d.getFullYear() === year && d.getMonth() === month; }).reduce((s, e) => s + e.amount, 0);
+    const prevTotal = allExpenses.filter((e) => { const d = new Date(e.date); return d.getFullYear() === prev.y && d.getMonth() === prev.m; }).reduce((s, e) => s + e.amount, 0);
+    return { curRevenue, prevRevenue, curTotal, prevTotal };
+  }, [allExpenses, year, month, prev.y, prev.m]);
 
-  const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const prevLabel = `${MONTHS[prev.m].substring(0, 3)}/${prev.y}`;
   const curLabel = `${MONTHS[month].substring(0, 3)}/${year}`;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="rounded-2xl border border-border/50 bg-card p-5 shadow-card"
-    >
-      <h3 className="mb-5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-        Comparativo: {curLabel} vs {prevLabel}
-      </h3>
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="rounded-2xl border border-border/50 bg-card p-5 shadow-card"
+      >
+        <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          {curLabel} vs {prevLabel}
+        </h3>
+        <div className="space-y-3">
+          {[
+            { label: "Receita", current: comparison.curRevenue, previous: comparison.prevRevenue },
+            { label: "Custo Total", current: comparison.curTotal, previous: comparison.prevTotal },
+            { label: "Lucro", current: comparison.curRevenue - comparison.curTotal, previous: comparison.prevRevenue - comparison.prevTotal },
+          ].map((item, index) => (
+            <motion.div
+              key={item.label}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 + index * 0.1 }}
+              className="flex items-center justify-between rounded-xl bg-accent/40 px-4 py-3"
+            >
+              <span className="text-sm font-medium">{item.label}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground tabular-nums">{fmt(item.previous)}</span>
+                <span className="text-sm font-bold tabular-nums">{fmt(item.current)}</span>
+                <DiffBadge current={item.current} previous={item.previous} />
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
 
-      <div className="space-y-3">
-        {[
-          { label: "Receita", current: comparison.curRevenue, previous: comparison.prevRevenue },
-          { label: "Custo Total", current: comparison.curTotal, previous: comparison.prevTotal },
-        ].map((item, index) => (
-          <motion.div
-            key={item.label}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 + index * 0.1 }}
-            className="flex items-center justify-between rounded-xl bg-accent/40 px-4 py-3"
-          >
-            <span className="text-sm font-medium">{item.label}</span>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground tabular-nums">{fmt(item.previous)}</span>
-              <span className="text-sm font-bold tabular-nums">{fmt(item.current)}</span>
-              <DiffBadge current={item.current} previous={item.previous} />
-            </div>
-          </motion.div>
-        ))}
+      {/* 6-month trend chart */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="rounded-2xl border border-border/50 bg-card p-5 shadow-card"
+      >
+        <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Evolução — Últimos 6 Meses
+        </h3>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={trendData} barGap={4}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+            <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Bar dataKey="Receita" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Custos" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Lucro" fill="hsl(217, 91%, 60%)" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </motion.div>
 
-        {comparison.catData.length > 0 && (
-          <div className="mt-4 space-y-2 pt-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Por Categoria</p>
-            {comparison.catData.map(({ category, current, previous }, index) => (
-              <motion.div
-                key={category}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: 0.3 + index * 0.05 }}
-                className="flex items-center justify-between rounded-lg px-4 py-2 hover:bg-accent/30 transition-colors"
-              >
-                <span className="text-sm text-muted-foreground">{CATEGORY_LABELS[category]}</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground tabular-nums">{fmt(previous)}</span>
-                  <span className="tabular-nums font-semibold text-sm">{fmt(current)}</span>
-                  <DiffBadge current={current} previous={previous} />
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-    </motion.div>
+      {/* Category comparison chart */}
+      {categoryData.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="rounded-2xl border border-border/50 bg-card p-5 shadow-card"
+        >
+          <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Custos por Categoria — {curLabel} vs {prevLabel}
+          </h3>
+          <ResponsiveContainer width="100%" height={Math.max(250, categoryData.length * 45)}>
+            <BarChart data={categoryData} layout="vertical" barGap={2}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+              <XAxis type="number" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+              <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="Mês Atual" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="Mês Anterior" fill="hsl(217, 91%, 60%, 0.35)" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </motion.div>
+      )}
+    </div>
   );
 }

@@ -7,29 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const CATEGORY_MAP: Record<string, string> = {
-  manutencao: "manutencao",
-  manutenção: "manutencao",
-  pneu: "manutencao",
-  óleo: "manutencao",
-  oleo: "manutencao",
-  freio: "manutencao",
-  combustível: "manutencao",
-  combustivel: "manutencao",
-  seguro: "seguro",
-  imposto: "imposto",
-  ipva: "imposto",
-  financiamento: "financiamento",
-  parcela: "financiamento",
-  salário: "salario",
-  salario: "salario",
-  fgts: "fgts",
-  contador: "contador",
-  rastreador: "rastreador",
-  diária: "diaria",
-  diaria: "diaria",
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -47,7 +24,6 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Parse incoming message - support both Twilio webhook (form-encoded) and JSON
     let messageBody = "";
     let senderNumber = "";
     const contentType = req.headers.get("content-type") || "";
@@ -69,7 +45,6 @@ serve(async (req) => {
       );
     }
 
-    // Use AI to interpret the message
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -83,15 +58,27 @@ serve(async (req) => {
             role: "system",
             content: `Você é um assistente de gestão de frota. Interprete mensagens de WhatsApp sobre gastos/despesas de uma empresa de transporte com vans.
 
-Extraia as seguintes informações:
-- date: data do gasto (formato YYYY-MM-DD, use a data de hoje ${new Date().toISOString().split("T")[0]} se não especificada)
-- category: categoria (uma de: manutencao, seguro, imposto, financiamento, salario, fgts, contador, rastreador, diaria, outros)
-- description: descrição curta do gasto
-- vehicle: veículo relacionado (ex: "Van 01", "Van 02", "Geral" se não especificado)
-- amount: valor em reais (número decimal)
+Identifique a AÇÃO da mensagem:
+
+1. **register_expense** — Quando o usuário quer REGISTRAR um novo gasto. Ex: "Troca de pneus Van 01 R$450", "Seguro R$400 pendente"
+2. **mark_paid_by_description** — Quando o usuário diz que um item específico foi pago, usando a descrição. Ex: "Troca de pneus pago", "Parcela financiamento paga"
+3. **mark_paid_by_category** — Quando o usuário diz que uma categoria inteira foi paga. Ex: "Contador paga", "Seguro pago", "Financiamento pago"
+
+Para register_expense, extraia:
+- date: data (YYYY-MM-DD, use ${new Date().toISOString().split("T")[0]} se não especificada)
+- category: (manutencao, seguro, imposto, financiamento, salario, fgts, contador, rastreador, diaria, outros)
+- description: descrição curta
+- vehicle: veículo (ex: "Van 01", "Geral" se não especificado)
+- amount: valor em reais
 - status: "pago" ou "pendente" (default: "pago")
 
-Se a mensagem não parecer um registro de gasto, retorne category como "invalid".`,
+Para mark_paid_by_description, extraia:
+- search_description: a descrição do item a ser marcado como pago
+
+Para mark_paid_by_category, extraia:
+- search_category: a categoria a ser marcada como paga (use os nomes normalizados: manutencao, seguro, imposto, financiamento, salario, fgts, contador, rastreador, diaria)
+
+Se não parecer nenhuma dessas ações, use action "invalid".`,
           },
           { role: "user", content: messageBody },
         ],
@@ -99,31 +86,38 @@ Se a mensagem não parecer um registro de gasto, retorne category como "invalid"
           {
             type: "function",
             function: {
-              name: "register_expense",
-              description: "Registra um gasto no sistema",
+              name: "process_message",
+              description: "Processa a mensagem do WhatsApp",
               parameters: {
                 type: "object",
                 properties: {
-                  date: { type: "string", description: "Data YYYY-MM-DD" },
+                  action: {
+                    type: "string",
+                    enum: ["register_expense", "mark_paid_by_description", "mark_paid_by_category", "invalid"],
+                  },
+                  date: { type: "string", description: "Data YYYY-MM-DD (para register_expense)" },
                   category: {
                     type: "string",
-                    enum: [
-                      "manutencao", "seguro", "imposto", "financiamento",
-                      "salario", "fgts", "contador", "rastreador", "diaria", "outros", "invalid",
-                    ],
+                    enum: ["manutencao", "seguro", "imposto", "financiamento", "salario", "fgts", "contador", "rastreador", "diaria", "outros"],
                   },
                   description: { type: "string" },
                   vehicle: { type: "string" },
                   amount: { type: "number" },
                   status: { type: "string", enum: ["pago", "pendente"] },
+                  search_description: { type: "string", description: "Descrição do item a marcar como pago" },
+                  search_category: {
+                    type: "string",
+                    enum: ["manutencao", "seguro", "imposto", "financiamento", "salario", "fgts", "contador", "rastreador", "diaria", "outros"],
+                    description: "Categoria a marcar como paga",
+                  },
                 },
-                required: ["date", "category", "description", "vehicle", "amount", "status"],
+                required: ["action"],
                 additionalProperties: false,
               },
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "register_expense" } },
+        tool_choice: { type: "function", function: { name: "process_message" } },
       }),
     });
 
@@ -147,28 +141,72 @@ Se a mensagem não parecer um registro de gasto, retorne category como "invalid"
 
     const aiData = await aiResponse.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
-      throw new Error("AI did not return structured data");
-    }
+    if (!toolCall) throw new Error("AI did not return structured data");
 
     const parsed = JSON.parse(toolCall.function.arguments);
 
-    if (parsed.category === "invalid") {
-      // Return Twilio-compatible TwiML for non-expense messages
-      const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>❓ Não entendi como um registro de gasto. Envie algo como: "Troca de pneus Van 01 R$450"</Message></Response>`;
-      return new Response(twiml, {
-        headers: { ...corsHeaders, "Content-Type": "text/xml" },
-      });
+    // === INVALID ===
+    if (parsed.action === "invalid") {
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>❓ Não entendi. Envie algo como:\n• "Troca de pneus Van 01 R$450"\n• "Contador paga"\n• "Troca de pneus pago"</Message></Response>`;
+      return new Response(twiml, { headers: { ...corsHeaders, "Content-Type": "text/xml" } });
     }
 
-    // Insert into database
+    // === MARK PAID BY DESCRIPTION ===
+    if (parsed.action === "mark_paid_by_description") {
+      const search = parsed.search_description || parsed.description || "";
+      const { data: items, error: qErr } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("status", "pendente")
+        .ilike("description", `%${search}%`)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (qErr || !items || items.length === 0) {
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>❌ Nenhum item pendente encontrado com "${search}".</Message></Response>`;
+        return new Response(twiml, { headers: { ...corsHeaders, "Content-Type": "text/xml" } });
+      }
+
+      const item = items[0];
+      await supabase.from("expenses").update({ status: "pago" }).eq("id", item.id);
+
+      const amt = Number(item.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>✅ Marcado como PAGO!\n📋 ${item.description}\n💰 R$ ${amt}\n📂 ${item.category}</Message></Response>`;
+      return new Response(twiml, { headers: { ...corsHeaders, "Content-Type": "text/xml" } });
+    }
+
+    // === MARK PAID BY CATEGORY ===
+    if (parsed.action === "mark_paid_by_category") {
+      const cat = parsed.search_category || parsed.category || "";
+      const { data: items, error: qErr } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("status", "pendente")
+        .eq("category", cat)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (qErr || !items || items.length === 0) {
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>❌ Nenhum item pendente na categoria "${cat}".</Message></Response>`;
+        return new Response(twiml, { headers: { ...corsHeaders, "Content-Type": "text/xml" } });
+      }
+
+      const item = items[0];
+      await supabase.from("expenses").update({ status: "pago" }).eq("id", item.id);
+
+      const amt = Number(item.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>✅ Marcado como PAGO!\n📋 ${item.description}\n💰 R$ ${amt}\n📂 ${item.category}</Message></Response>`;
+      return new Response(twiml, { headers: { ...corsHeaders, "Content-Type": "text/xml" } });
+    }
+
+    // === REGISTER EXPENSE ===
     const { data, error } = await supabase.from("expenses").insert({
       date: parsed.date,
       category: parsed.category,
       description: parsed.description,
-      vehicle: parsed.vehicle,
+      vehicle: parsed.vehicle || "Geral",
       amount: parsed.amount,
-      status: parsed.status,
+      status: parsed.status || "pago",
       source: "whatsapp",
     }).select().single();
 
@@ -177,30 +215,16 @@ Se a mensagem não parecer um registro de gasto, retorne category como "invalid"
       throw new Error(`Database error: ${error.message}`);
     }
 
-    const formattedAmount = parsed.amount.toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-    });
+    const formattedAmount = parsed.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>✅ Registrado!\n📋 ${parsed.description}\n🚐 ${parsed.vehicle || "Geral"}\n💰 R$ ${formattedAmount}\n📅 ${parsed.date}\n📂 ${parsed.category}\n🔖 ${parsed.status || "pago"}</Message></Response>`;
+    return new Response(twiml, { headers: { ...corsHeaders, "Content-Type": "text/xml" } });
 
-    // Return TwiML response for Twilio
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>✅ Registrado!
-📋 ${parsed.description}
-🚐 ${parsed.vehicle}
-💰 R$ ${formattedAmount}
-📅 ${parsed.date}
-📂 ${parsed.category}
-🔖 ${parsed.status}</Message></Response>`;
-
-    return new Response(twiml, {
-      headers: { ...corsHeaders, "Content-Type": "text/xml" },
-    });
   } catch (e) {
     console.error("Webhook error:", e);
     const errorMessage = e instanceof Error ? e.message : "Erro desconhecido";
-    
-    // Return error as TwiML
     const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>❌ Erro ao processar: ${errorMessage}</Message></Response>`;
     return new Response(twiml, {
-      status: 200, // Twilio expects 200
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "text/xml" },
     });
   }

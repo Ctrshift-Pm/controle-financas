@@ -16,7 +16,7 @@ import { MonthComparison } from "@/components/MonthComparison";
 import { VehicleManager } from "@/components/VehicleManager";
 import { DriverDailies } from "@/components/DriverDailies";
 import { RecurringReminders } from "@/components/RecurringReminders";
-import { deleteExpense, getMonthlyRevenue, getVehicleName, updateExpenseStatus } from "@/lib/store";
+import { deleteExpense, getMonthlyRevenue, getVehicleName, updateExpenseStatus, getDriverDailies } from "@/lib/store";
 import { useExpenses } from "@/hooks/use-expenses";
 import { getVehicles } from "@/lib/types";
 import { toast } from "sonner";
@@ -254,7 +254,11 @@ const Index = () => {
               <motion.div variants={tabAnimVariants} initial="hidden" animate="visible" exit="exit">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   <PaymentReminders expenses={filtered} onMarkPaid={handleMarkPaid} />
-                  <RecurringReminders onUpdated={refresh} />
+                  <RecurringReminders onUpdated={refresh} driverDailiesTotal={
+                    getDriverDailies()
+                      .filter((d) => { const dt = new Date(d.date); return dt.getFullYear() === year && dt.getMonth() === month; })
+                      .reduce((s, d) => s + d.routes * d.valuePerRoute, 0)
+                  } />
                 </div>
               </motion.div>
             </TabsContent>
