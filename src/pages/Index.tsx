@@ -48,11 +48,13 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("lancamentos");
 
   const { expenses: allExpenses, refresh: refreshExpenses } = useExpenses();
+  const { dailies: allDriverDailies, refresh: refreshDailies } = useDriverDailies();
 
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
     refreshExpenses();
-  }, [refreshExpenses]);
+    refreshDailies();
+  }, [refreshExpenses, refreshDailies]);
 
   const monthKey = getMonthKey(year, month);
 
