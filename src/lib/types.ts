@@ -40,7 +40,6 @@ export interface DriverDaily {
 
 // Sorted alphabetically
 export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  combustivel: "Combustível",
   contador: "Contador",
   diaria: "Diária",
   fgts: "FGTS",

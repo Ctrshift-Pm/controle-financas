@@ -88,6 +88,33 @@ export function deleteRecurringReminder(id: string): void {
   localStorage.setItem(RECURRING_KEY, JSON.stringify(reminders));
 }
 
+export function toggleRecurringReminderPaid(id: string): void {
+  const reminders = getRecurringReminders().map((r) =>
+    r.id === id ? { ...r, paid: !r.paid } : r
+  );
+  localStorage.setItem(RECURRING_KEY, JSON.stringify(reminders));
+}
+
+// === Drivers ===
+export function getDrivers(): string[] {
+  const raw = localStorage.getItem(DRIVERS_KEY);
+  if (raw) return JSON.parse(raw);
+  return [];
+}
+
+export function addDriver(name: string): void {
+  const drivers = getDrivers();
+  if (!drivers.includes(name)) {
+    drivers.push(name);
+    localStorage.setItem(DRIVERS_KEY, JSON.stringify(drivers));
+  }
+}
+
+export function removeDriver(name: string): void {
+  const drivers = getDrivers().filter((d) => d !== name);
+  localStorage.setItem(DRIVERS_KEY, JSON.stringify(drivers));
+}
+
 // === Driver Dailies ===
 export function getDriverDailies(): DriverDaily[] {
   const raw = localStorage.getItem(DAILIES_KEY);
