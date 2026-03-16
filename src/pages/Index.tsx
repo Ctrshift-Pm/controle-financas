@@ -16,7 +16,7 @@ import { MonthComparison } from "@/components/MonthComparison";
 import { VehicleManager } from "@/components/VehicleManager";
 import { DriverDailies } from "@/components/DriverDailies";
 import { RecurringReminders } from "@/components/RecurringReminders";
-import { deleteExpense, getMonthlyRevenue, getVehicleName, updateExpenseStatus } from "@/lib/store";
+import { deleteExpense, getMonthlyRevenue, getVehicleName, updateExpenseStatus, getDriverDailies } from "@/lib/store";
 import { useExpenses } from "@/hooks/use-expenses";
 import { getVehicles } from "@/lib/types";
 import { toast } from "sonner";
