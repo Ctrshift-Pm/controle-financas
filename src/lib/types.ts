@@ -1,15 +1,15 @@
 export type ExpenseCategory =
-  | "manutencao"
   | "combustivel"
-  | "imposto"
-  | "salario"
+  | "contador"
+  | "diaria"
   | "fgts"
   | "financiamento"
-  | "contador"
-  | "seguro"
+  | "imposto"
+  | "manutencao"
+  | "outros"
   | "rastreador"
-  | "diaria"
-  | "outros";
+  | "salario"
+  | "seguro";
 
 export interface Expense {
   id: string;
@@ -21,18 +21,22 @@ export interface Expense {
   status: "pago" | "pendente";
 }
 
+// Sorted alphabetically
 export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  manutencao: "Manutenção",
   combustivel: "Combustível",
-  imposto: "Imposto",
-  salario: "Salário",
+  contador: "Contador",
+  diaria: "Diária",
   fgts: "FGTS",
   financiamento: "Financiamento",
-  contador: "Contador",
-  seguro: "Seguro",
-  rastreador: "Rastreador",
-  diaria: "Diária",
+  imposto: "Imposto",
+  manutencao: "Manutenção",
   outros: "Outros",
+  rastreador: "Rastreador",
+  salario: "Salário",
+  seguro: "Seguro",
 };
+
+export const SORTED_CATEGORIES = (Object.entries(CATEGORY_LABELS) as [ExpenseCategory, string][])
+  .sort(([, a], [, b]) => a.localeCompare(b, "pt-BR"));
 
 export const VEHICLES = ["Van 01", "Van 02", "Van 03", "Geral"];

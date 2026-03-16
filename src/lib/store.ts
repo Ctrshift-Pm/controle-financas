@@ -2,6 +2,7 @@ import { Expense } from "./types";
 
 const STORAGE_KEY = "route-expenses";
 const REVENUE_KEY = "route-revenue";
+const VEHICLE_NAMES_KEY = "route-vehicle-names";
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
@@ -35,4 +36,22 @@ export function setMonthlyRevenue(month: string, value: number): void {
   const revenues = JSON.parse(localStorage.getItem(REVENUE_KEY) || "{}");
   revenues[month] = value;
   localStorage.setItem(REVENUE_KEY, JSON.stringify(revenues));
+}
+
+// Vehicle name management
+export function getVehicleNames(): Record<string, string> {
+  const raw = localStorage.getItem(VEHICLE_NAMES_KEY);
+  if (!raw) return {};
+  return JSON.parse(raw);
+}
+
+export function setVehicleName(vehicleId: string, name: string): void {
+  const names = getVehicleNames();
+  names[vehicleId] = name;
+  localStorage.setItem(VEHICLE_NAMES_KEY, JSON.stringify(names));
+}
+
+export function getVehicleName(vehicleId: string): string {
+  const names = getVehicleNames();
+  return names[vehicleId] || vehicleId;
 }
