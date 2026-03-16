@@ -1,5 +1,4 @@
 export type ExpenseCategory =
-  | "combustivel"
   | "contador"
   | "diaria"
   | "fgts"
