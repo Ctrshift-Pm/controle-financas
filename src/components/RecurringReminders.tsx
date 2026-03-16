@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Bell, Plus, Trash2, CheckCircle2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RecurringReminder, ExpenseCategory, SORTED_CATEGORIES, CATEGORY_LABELS } from "@/lib/types";
 import { getRecurringReminders, saveRecurringReminder, deleteRecurringReminder, toggleRecurringReminderPaid, saveExpense } from "@/lib/store";
 import { toast } from "sonner";
-import { useExpenses } from "@/hooks/use-expenses";
+import { supabase } from "@/integrations/supabase/client";
 
 const DEFAULT_RECURRING: Omit<RecurringReminder, "id">[] = [
   { label: "Contador", dayOfMonth: 10, amount: 810, category: "contador" },
