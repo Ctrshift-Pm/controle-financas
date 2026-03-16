@@ -54,39 +54,43 @@ function checkMonthlyReset() {
   }
 }
 
-// Sync recurring reminders as pending expenses in the DB for current month (returns true if any created)
-async function syncRecurringToExpenses(reminders: RecurringReminder[], expenses: { category: string; source?: string; description: string; date: string }[]): Promise<boolean> {
+// Sync recurring reminders as pending expenses in the DB for current month (queries DB directly to avoid stale state)
+async function syncRecurringToExpenses(reminders: RecurringReminder[]): Promise<boolean> {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
   const monthStr = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const startDate = `${monthStr}-01`;
+  const endDate = month === 11 ? `${year + 1}-01-01` : `${year}-${String(month + 2).padStart(2, "0")}-01`;
   let created = false;
 
   for (const r of reminders) {
     if (r.amount <= 0) continue;
     if (r.category === "diaria") continue;
 
-    // Check if expense already exists for this recurring item this month
-    const alreadyExists = expenses.some((e) => {
-      const d = new Date(e.date);
-      return (e.source === "recorrente-auto") &&
-        e.description === r.label &&
-        d.getFullYear() === year && d.getMonth() === month;
-    });
+    // Query DB directly for existence check (avoids stale state)
+    const { data } = await supabase
+      .from("expenses")
+      .select("id")
+      .eq("source", "recorrente-auto")
+      .eq("description", r.label)
+      .gte("date", startDate)
+      .lt("date", endDate)
+      .limit(1);
 
-    if (!alreadyExists) {
-      const day = Math.min(r.dayOfMonth, 28);
-      await saveExpense({
-        date: `${monthStr}-${String(day).padStart(2, "0")}`,
-        category: r.category,
-        description: r.label,
-        vehicle: "Geral",
-        amount: r.amount,
-        status: "pendente",
-        source: "recorrente-auto",
-      });
-      created = true;
-    }
+    if (data && data.length > 0) continue;
+
+    const day = Math.min(r.dayOfMonth, 28);
+    await saveExpense({
+      date: `${monthStr}-${String(day).padStart(2, "0")}`,
+      category: r.category,
+      description: r.label,
+      vehicle: "Geral",
+      amount: r.amount,
+      status: "pendente",
+      source: "recorrente-auto",
+    });
+    created = true;
   }
   return created;
 }
