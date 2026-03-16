@@ -21,6 +21,23 @@ export interface Expense {
   status: "pago" | "pendente";
 }
 
+export interface RecurringReminder {
+  id: string;
+  label: string;
+  dayOfMonth: number; // dia do mês para lembrar
+  amount: number;
+  category: ExpenseCategory;
+}
+
+export interface DriverDaily {
+  id: string;
+  date: string;
+  driverName: string;
+  routes: number; // 2-4
+  valuePerRoute: number;
+  vehicle: string;
+}
+
 // Sorted alphabetically
 export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   combustivel: "Combustível",

@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MetricCard } from "@/components/MetricCard";
 import { ExpenseTable } from "@/components/ExpenseTable";
 import { NewExpenseModal } from "@/components/NewExpenseModal";
@@ -11,8 +12,11 @@ import { RevenueChart } from "@/components/RevenueChart";
 import { PaymentReminders } from "@/components/PaymentReminders";
 import { MonthComparison } from "@/components/MonthComparison";
 import { VehicleManager } from "@/components/VehicleManager";
-import { getExpenses, deleteExpense, getMonthlyRevenue, getVehicleName } from "@/lib/store";
+import { DriverDailies } from "@/components/DriverDailies";
+import { RecurringReminders } from "@/components/RecurringReminders";
+import { getExpenses, deleteExpense, getMonthlyRevenue, getVehicleName, updateExpenseStatus } from "@/lib/store";
 import { VEHICLES } from "@/lib/types";
+import { toast } from "sonner";
 
 const MONTHS = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -64,6 +68,12 @@ const Index = () => {
 
   const handleDelete = (id: string) => {
     deleteExpense(id);
+    refresh();
+  };
+
+  const handleMarkPaid = (id: string) => {
+    updateExpenseStatus(id, "pago");
+    toast.success("Pagamento concluído!");
     refresh();
   };
 
@@ -126,31 +136,50 @@ const Index = () => {
           />
         </div>
 
-        {/* Payment Reminders */}
-        <PaymentReminders expenses={filtered} />
+        {/* Tabs */}
+        <Tabs defaultValue="lancamentos" className="w-full">
+          <TabsList className="w-full justify-start flex-wrap h-auto gap-1">
+            <TabsTrigger value="lancamentos" className="text-xs">Lançamentos</TabsTrigger>
+            <TabsTrigger value="lembretes" className="text-xs">Lembretes</TabsTrigger>
+            <TabsTrigger value="diarias" className="text-xs">Diárias</TabsTrigger>
+            <TabsTrigger value="graficos" className="text-xs">Gráficos</TabsTrigger>
+            <TabsTrigger value="comparativo" className="text-xs">Comparativo</TabsTrigger>
+          </TabsList>
 
-        {/* Revenue Chart */}
-        <RevenueChart year={year} />
+          <TabsContent value="lancamentos">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="shadow-card rounded-xl bg-card p-5 lg:col-span-2">
+                <h3 className="mb-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Lançamentos — {MONTHS[month]} {year}
+                </h3>
+                <ExpenseTable expenses={filtered} onDelete={handleDelete} />
+              </div>
+              <div className="space-y-6">
+                <CostBreakdown expenses={filtered} />
+                <VehicleManager onUpdated={refresh} />
+              </div>
+            </div>
+          </TabsContent>
 
-        {/* Month Comparison */}
-        <MonthComparison year={year} month={month} />
+          <TabsContent value="lembretes">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <PaymentReminders expenses={filtered} onMarkPaid={handleMarkPaid} />
+              <RecurringReminders onUpdated={refresh} />
+            </div>
+          </TabsContent>
 
-        {/* Main content grid */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Table */}
-          <div className="shadow-card rounded-xl bg-card p-5 lg:col-span-2">
-            <h3 className="mb-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Lançamentos do Mês
-            </h3>
-            <ExpenseTable expenses={filtered} onDelete={handleDelete} />
-          </div>
+          <TabsContent value="diarias">
+            <DriverDailies year={year} month={month} />
+          </TabsContent>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <CostBreakdown expenses={filtered} />
-            <VehicleManager onUpdated={refresh} />
-          </div>
-        </div>
+          <TabsContent value="graficos">
+            <RevenueChart year={year} />
+          </TabsContent>
+
+          <TabsContent value="comparativo">
+            <MonthComparison year={year} month={month} />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <NewExpenseModal
