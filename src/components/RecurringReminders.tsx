@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Bell, Plus, Trash2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,11 +7,31 @@ import { RecurringReminder, ExpenseCategory, SORTED_CATEGORIES, CATEGORY_LABELS 
 import { getRecurringReminders, saveRecurringReminder, deleteRecurringReminder, toggleRecurringReminderPaid } from "@/lib/store";
 import { toast } from "sonner";
 
+const DEFAULT_RECURRING: Omit<RecurringReminder, "id">[] = [
+  { label: "Contador", dayOfMonth: 10, amount: 810, category: "contador" },
+  { label: "Imposto da Nota (6%)", dayOfMonth: 15, amount: 1250, category: "imposto" },
+  { label: "Parcela Financiamento", dayOfMonth: 5, amount: 4500, category: "financiamento" },
+  { label: "Seguro", dayOfMonth: 10, amount: 400, category: "seguro" },
+  { label: "Férias e 13º", dayOfMonth: 5, amount: 400, category: "salario" },
+];
+
 interface Props {
   onUpdated: () => void;
+  driverDailiesTotal?: number;
 }
 
-export function RecurringReminders({ onUpdated }: Props) {
+function seedDefaults() {
+  const existing = getRecurringReminders();
+  if (existing.length === 0) {
+    for (const item of DEFAULT_RECURRING) {
+      saveRecurringReminder(item);
+    }
+    // Add driver dailies placeholder
+    saveRecurringReminder({ label: "Diárias dos Motoristas", dayOfMonth: 30, amount: 0, category: "diaria" });
+  }
+}
+
+export function RecurringReminders({ onUpdated, driverDailiesTotal = 0 }: Props) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState("");
@@ -19,10 +39,21 @@ export function RecurringReminders({ onUpdated }: Props) {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("imposto");
 
+  useEffect(() => {
+    seedDefaults();
+    setRefreshKey((k) => k + 1);
+  }, []);
+
   const reminders = useMemo(() => {
     void refreshKey;
-    return getRecurringReminders();
-  }, [refreshKey]);
+    return getRecurringReminders().map((r) => {
+      // Auto-update driver dailies amount from calculated total
+      if (r.category === "diaria" && r.label.toLowerCase().includes("diária")) {
+        return { ...r, amount: driverDailiesTotal };
+      }
+      return r;
+    });
+  }, [refreshKey, driverDailiesTotal]);
 
   const refresh = () => {
     setRefreshKey((k) => k + 1);
@@ -61,6 +92,7 @@ export function RecurringReminders({ onUpdated }: Props) {
   };
 
   const today = new Date().getDate();
+  const totalMonthly = reminders.reduce((s, r) => s + r.amount, 0);
 
   const pendingReminders = reminders.filter((r) => !r.paid);
   const paidReminders = reminders.filter((r) => r.paid);
@@ -68,9 +100,14 @@ export function RecurringReminders({ onUpdated }: Props) {
   return (
     <div className="shadow-card rounded-xl bg-card p-5">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Lembretes Recorrentes
-        </h3>
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Custos Fixos Mensais
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Total: {totalMonthly.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          </p>
+        </div>
         <Button
           size="sm"
           variant="ghost"
