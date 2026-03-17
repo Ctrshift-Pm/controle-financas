@@ -265,14 +265,15 @@ const Index = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="w-full">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
           >
-            <TabsList
-              className="w-full justify-start flex-wrap h-auto gap-1.5 bg-transparent p-0 mb-4"
+            <div
+              className="w-full flex justify-start flex-wrap gap-1.5 p-0 mb-4"
+              role="tablist"
               aria-label="Seções do painel"
             >
               {[
@@ -282,16 +283,22 @@ const Index = () => {
                 { value: "graficos", label: "Gráficos", icon: BarChart3 },
                 { value: "comparativo", label: "Comparativo", icon: GitCompare },
               ].map(({ value, label, icon: TabIcon }) => (
-                <TabsTrigger
+                <button
                   key={value}
-                  value={value}
-                  className="gap-1.5 rounded-xl border border-transparent px-4 py-2 text-sm font-semibold transition-all data-[state=active]:border-primary/20 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  role="tab"
+                  aria-selected={activeTab === value}
+                  onClick={() => setActiveTab(value)}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-semibold transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+                    activeTab === value
+                      ? "border-primary/20 bg-primary/10 text-primary shadow-sm"
+                      : "border-transparent hover:bg-accent/60"
+                  }`}
                 >
                   <TabIcon className="h-3.5 w-3.5" />
                   {label}
-                </TabsTrigger>
+                </button>
               ))}
-            </TabsList>
+            </div>
           </motion.div>
 
           <AnimatePresence mode="wait">
@@ -353,7 +360,7 @@ const Index = () => {
               </motion.div>
             )}
           </AnimatePresence>
-        </Tabs>
+        </div>
       </main>
 
       <NewExpenseModal open={modalOpen} onClose={() => setModalOpen(false)} onSaved={refresh} />
