@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, ChevronLeft, ChevronRight, BarChart3, FileText, Users, GitCompare } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, BarChart3, FileText, Users, GitCompare, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +12,7 @@ import { CostBreakdown } from "@/components/CostBreakdown";
 import { RevenueChart } from "@/components/RevenueChart";
 import { CostPieChart } from "@/components/CostPieChart";
 import { PaymentReminders } from "@/components/PaymentReminders";
+import { PaidExpenses } from "@/components/PaidExpenses";
 import { MonthComparison } from "@/components/MonthComparison";
 import { VehicleManager } from "@/components/VehicleManager";
 import { DriverDailies } from "@/components/DriverDailies";
@@ -101,6 +102,12 @@ const Index = () => {
   const handleMarkPaid = async (id: string) => {
     await updateExpenseStatus(id, "pago");
     toast.success("Pagamento concluído!");
+    refresh();
+  };
+
+  const handleMarkPending = async (id: string) => {
+    await updateExpenseStatus(id, "pendente");
+    toast.success("Voltou para pendente.");
     refresh();
   };
 
@@ -223,6 +230,7 @@ const Index = () => {
               {[
                 { value: "lancamentos", label: "Lançamentos", icon: FileText },
                 { value: "diarias", label: "Diárias", icon: Users },
+                { value: "pagos", label: "Pagamentos Realizados", icon: CheckSquare },
                 { value: "graficos", label: "Gráficos", icon: BarChart3 },
                 { value: "comparativo", label: "Comparativo", icon: GitCompare },
               ].map(({ value, label, icon: TabIcon }) => (
@@ -269,6 +277,12 @@ const Index = () => {
             <TabsContent value="diarias" key="diarias" asChild>
               <motion.div variants={tabAnimVariants} initial="hidden" animate="visible" exit="exit">
                 <DriverDailies year={year} month={month} expenses={allExpenses} onUpdated={refresh} />
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="pagos" key="pagos" asChild>
+              <motion.div variants={tabAnimVariants} initial="hidden" animate="visible" exit="exit">
+                <PaidExpenses expenses={allMonthExpenses} onMarkPending={handleMarkPending} />
               </motion.div>
             </TabsContent>
 
