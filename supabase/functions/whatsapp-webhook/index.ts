@@ -163,6 +163,13 @@ Responda SOMENTE com o JSON, exemplo: {"action":"register_expense","date":"2026-
       return new Response(twiml, { headers: { ...corsHeaders, "Content-Type": "text/xml" } });
     }
 
+    // Current month range for filtering
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const nextMonth = now.getMonth() === 11
+      ? `${now.getFullYear() + 1}-01-01`
+      : `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, "0")}-01`;
+
     // === MARK PAID BY DESCRIPTION ===
     if (parsed.action === "mark_paid_by_description") {
       const search = parsed.search_description || parsed.description || "";
@@ -171,11 +178,13 @@ Responda SOMENTE com o JSON, exemplo: {"action":"register_expense","date":"2026-
         .select("*")
         .eq("status", "pendente")
         .ilike("description", `%${search}%`)
-        .order("created_at", { ascending: false })
+        .gte("date", monthStart)
+        .lt("date", nextMonth)
+        .order("date", { ascending: true })
         .limit(1);
 
       if (qErr || !items || items.length === 0) {
-        const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>❌ Nenhum item pendente encontrado com "${search}".</Message></Response>`;
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>❌ Nenhum item pendente encontrado com "${search}" neste mês.</Message></Response>`;
         return new Response(twiml, { headers: { ...corsHeaders, "Content-Type": "text/xml" } });
       }
 
@@ -195,7 +204,9 @@ Responda SOMENTE com o JSON, exemplo: {"action":"register_expense","date":"2026-
         .select("*")
         .eq("status", "pendente")
         .eq("category", cat)
-        .order("created_at", { ascending: false })
+        .gte("date", monthStart)
+        .lt("date", nextMonth)
+        .order("date", { ascending: true })
         .limit(1);
 
       if (qErr || !items || items.length === 0) {
