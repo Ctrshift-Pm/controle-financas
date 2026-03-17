@@ -9,7 +9,7 @@ interface Props { expenses: Expense[]; onMarkPaid: (id: string) => void; }
 
 export function PaymentReminders({ expenses, onMarkPaid }: Props) {
   const pending = useMemo(
-    () => expenses.filter((e) => e.status === "pendente").sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    () => expenses.filter((e) => e.status === "pendente").sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [expenses]
   );
 
