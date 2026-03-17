@@ -280,6 +280,12 @@ const Index = () => {
               </motion.div>
             </TabsContent>
 
+            <TabsContent value="pagos" key="pagos" asChild>
+              <motion.div variants={tabAnimVariants} initial="hidden" animate="visible" exit="exit">
+                <PaidExpenses expenses={allMonthExpenses} onMarkPending={handleMarkPending} />
+              </motion.div>
+            </TabsContent>
+
             <TabsContent value="graficos" key="graficos" asChild>
               <motion.div variants={tabAnimVariants} initial="hidden" animate="visible" exit="exit">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
