@@ -120,7 +120,7 @@ Responda SOMENTE com o JSON, exemplo: {"action":"register_expense","date":"2026-
       throw new Error("Failed to parse AI response as JSON");
     }
 
-    const parsed = JSON.parse(toolCall.function.arguments);
+    
 
     // === INVALID ===
     if (parsed.action === "invalid") {
