@@ -95,13 +95,6 @@ export function DriverDailies({ year, month, expenses, onUpdated }: Props) {
       vehicle,
     });
 
-    const currentTotal = filtered
-      .filter((d) => d.driverName === driverName.trim())
-      .reduce((s, d) => s + d.routes * d.valuePerRoute, 0);
-    const newTotal = currentTotal + numRoutes * VALUE_PER_ROUTE;
-
-    await syncDriverExpense(driverName.trim(), newTotal);
-
     toast.success(`+${numRoutes} rota${numRoutes > 1 ? "s" : ""} para ${driverName.trim()} = R$ ${(numRoutes * VALUE_PER_ROUTE).toFixed(2)}`);
     setDriverName("");
     setRoutes("2");
