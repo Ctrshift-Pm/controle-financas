@@ -28,7 +28,7 @@ export function PaymentReminders({ expenses, onMarkPaid, isFutureMonth = false }
   const totalPending = pending.reduce((s, e) => s + e.amount, 0);
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-card" role="region" aria-label="Pagamentos pendentes">
+    <div className={`rounded-2xl border border-border/50 bg-card p-6 shadow-card ${isFutureMonth ? "opacity-50" : ""}`} role="region" aria-label="Pagamentos pendentes">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Pagamentos Pendentes</h3>
         <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-0.5 text-xs font-bold text-warning ring-1 ring-warning/20" role="status" aria-live="polite">
