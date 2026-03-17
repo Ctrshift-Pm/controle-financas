@@ -62,75 +62,20 @@ export function DriverDailies({ year, month, expenses, onUpdated }: Props) {
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
 
-  // Find existing driver salary expenses for this month
   const driverExpenses = useMemo(() => {
-    return expenses.filter((e) => {
-      const d = new Date(e.date);
-      return e.category === "diaria" &&
-        (e.source === "diaria-auto" || e.source === "whatsapp") &&
-        d.getFullYear() === year && d.getMonth() === month;
-    });
-  }, [expenses, year, month]);
+    return buildConsolidatedDriverExpenses(expenses, allDailies, year, month);
+  }, [expenses, allDailies, year, month]);
 
-  // Auto-sync driver expense amounts when dailies change (fixes whatsapp-added dailies)
   useEffect(() => {
-    if (byDriver.length === 0) return;
-    let needsSync = false;
-    for (const [name, data] of byDriver) {
-      const exp = driverExpenses.find((e) => e.description.includes(name));
-      if (exp && exp.amount !== data.value) {
-        needsSync = true;
-        break;
+    void syncDriverDailyExpenses(expenses, allDailies, year, month).then((changed) => {
+      if (changed) {
+        onUpdated();
       }
-      if (!exp && data.value > 0) {
-        needsSync = true;
-        break;
-      }
-    }
-    if (needsSync) {
-      (async () => {
-        for (const [name, data] of byDriver) {
-          await syncDriverExpense(name, data.value);
-        }
-        refresh();
-      })();
-    }
-  }, [byDriver, driverExpenses]); // eslint-disable-line react-hooks/exhaustive-deps
+    });
+  }, [expenses, allDailies, year, month, onUpdated]);
 
   const getDriverExpense = (name: string) => {
-    return driverExpenses.find((e) => e.description.includes(name));
-  };
-
-  const syncDriverExpense = async (name: string, totalAmount: number) => {
-    const existing = getDriverExpense(name);
-    const monthLabel = `${String(month + 1).padStart(2, "0")}/${year}`;
-
-    if (existing) {
-      if (existing.amount !== totalAmount) {
-        await deleteExpense(existing.id);
-        if (totalAmount > 0) {
-          await saveExpense({
-            date: `${year}-${String(month + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`,
-            category: "diaria",
-            description: `Diárias ${name} - ${monthLabel}`,
-            vehicle: "Geral",
-            amount: totalAmount,
-            status: "pendente",
-            source: "diaria-auto",
-          });
-        }
-      }
-    } else if (totalAmount > 0) {
-      await saveExpense({
-        date: `${year}-${String(month + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`,
-        category: "diaria",
-        description: `Diárias ${name} - ${monthLabel}`,
-        vehicle: "Geral",
-        amount: totalAmount,
-        status: "pendente",
-        source: "diaria-auto",
-      });
-    }
+    return driverExpenses.find((e) => e.description === getDriverDailyDescription(name, year, month));
   };
 
   const handleAdd = async () => {
