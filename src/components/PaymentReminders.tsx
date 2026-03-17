@@ -5,7 +5,7 @@ import { Expense, CATEGORY_LABELS } from "@/lib/types";
 import { getVehicleName } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 
-interface Props { expenses: Expense[]; onMarkPaid: (id: string) => void; }
+interface Props { expenses: Expense[]; onMarkPaid: (id: string) => void; isFutureMonth?: boolean; }
 
 export function PaymentReminders({ expenses, onMarkPaid }: Props) {
   const pending = useMemo(
