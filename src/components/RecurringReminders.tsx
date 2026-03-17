@@ -169,8 +169,34 @@ export function RecurringReminders({ onUpdated, driverDailiesTotal = 0 }: Props)
     refresh();
   };
 
-  const handleTogglePaid = (id: string) => {
+  const handleTogglePaid = async (id: string) => {
+    const reminder = reminders.find((r) => r.id === id);
     toggleRecurringReminderPaid(id);
+
+    // Sync the corresponding expense in DB
+    if (reminder) {
+      const now = new Date();
+      const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const startDate = `${monthStr}-01`;
+      const endMonth = now.getMonth() === 11
+        ? `${now.getFullYear() + 1}-01-01`
+        : `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, "0")}-01`;
+
+      const { data } = await supabase
+        .from("expenses")
+        .select("id")
+        .eq("source", "recorrente-auto")
+        .eq("description", reminder.label)
+        .gte("date", startDate)
+        .lt("date", endMonth)
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const newStatus = reminder.paid ? "pendente" : "pago";
+        await supabase.from("expenses").update({ status: newStatus }).eq("id", data[0].id);
+      }
+    }
+
     toast.success("Status atualizado!");
     refresh();
   };
