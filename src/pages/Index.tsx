@@ -106,11 +106,15 @@ const Index = () => {
   const revenue = getMonthlyRevenue(monthKey);
   const margin = revenue - totalCost;
 
+  const syncingRef = React.useRef(false);
   useEffect(() => {
+    if (syncingRef.current) return;
     let cancelled = false;
 
     const syncDailies = async () => {
+      syncingRef.current = true;
       const changed = await syncDriverDailyExpenses(allExpenses, allDriverDailies, year, month);
+      syncingRef.current = false;
       if (changed && !cancelled) {
         refreshExpenses();
       }
@@ -121,7 +125,7 @@ const Index = () => {
     return () => {
       cancelled = true;
     };
-  }, [allExpenses, allDriverDailies, year, month, refreshExpenses]);
+  }, [allDriverDailies, year, month]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prevMonth = () => {
     if (month === 0) {
