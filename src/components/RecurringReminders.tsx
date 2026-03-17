@@ -113,6 +113,51 @@ export function RecurringReminders({ onUpdated, driverDailiesTotal = 0 }: Props)
     setRefreshKey((k) => k + 1);
   }, []);
 
+  // Sync localStorage paid status from Supabase expense status
+  const syncPaidRef = useRef(false);
+  useEffect(() => {
+    if (syncPaidRef.current) return;
+    syncPaidRef.current = true;
+
+    async function syncPaidStatus() {
+      const now = new Date();
+      const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const startDate = `${monthStr}-01`;
+      const endMonth = now.getMonth() === 11
+        ? `${now.getFullYear() + 1}-01-01`
+        : `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, "0")}-01`;
+
+      const localReminders = getRecurringReminders();
+      let changed = false;
+
+      for (const r of localReminders) {
+        if (r.amount <= 0 || r.category === "diaria") continue;
+
+        const { data } = await supabase
+          .from("expenses")
+          .select("id, status")
+          .eq("source", "recorrente-auto")
+          .eq("description", r.label)
+          .gte("date", startDate)
+          .lt("date", endMonth)
+          .limit(1);
+
+        if (data && data.length > 0) {
+          const dbPaid = data[0].status === "pago";
+          if (r.paid !== dbPaid) {
+            toggleRecurringReminderPaid(r.id);
+            changed = true;
+          }
+        }
+      }
+
+      syncPaidRef.current = false;
+      if (changed) setRefreshKey((k) => k + 1);
+    }
+
+    syncPaidStatus();
+  }); // runs on every render but guarded by ref
+
   const reminders = useMemo(() => {
     void refreshKey;
     return getRecurringReminders().map((r) => {
