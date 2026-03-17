@@ -72,6 +72,8 @@ const Index = () => {
   }, [refreshExpenses, refreshDailies]);
 
   const monthKey = getMonthKey(year, month);
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+  const isFutureMonth = year > now.getFullYear() || (year === now.getFullYear() && month > now.getMonth());
 
   const vehicles = useMemo(() => {
     void refreshKey;
