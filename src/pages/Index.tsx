@@ -12,6 +12,7 @@ import { CostBreakdown } from "@/components/CostBreakdown";
 import { RevenueChart } from "@/components/RevenueChart";
 import { CostPieChart } from "@/components/CostPieChart";
 import { PaymentReminders } from "@/components/PaymentReminders";
+import { PaidExpenses } from "@/components/PaidExpenses";
 import { MonthComparison } from "@/components/MonthComparison";
 import { VehicleManager } from "@/components/VehicleManager";
 import { DriverDailies } from "@/components/DriverDailies";
