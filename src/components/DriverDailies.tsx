@@ -72,19 +72,21 @@ export function DriverDailies({ year, month, expenses, onUpdated }: Props) {
   }, [expenses, year, month]);
 
   // Auto-sync driver expense amounts when dailies change (fixes whatsapp-added dailies)
-  const [hasSynced, setHasSynced] = useState(false);
-  useMemo(() => {
-    if (byDriver.length === 0 || hasSynced) return;
-    let needsRefresh = false;
+  useEffect(() => {
+    if (byDriver.length === 0) return;
+    let needsSync = false;
     for (const [name, data] of byDriver) {
       const exp = driverExpenses.find((e) => e.description.includes(name));
       if (exp && exp.amount !== data.value) {
-        needsRefresh = true;
+        needsSync = true;
+        break;
+      }
+      if (!exp && data.value > 0) {
+        needsSync = true;
         break;
       }
     }
-    if (needsRefresh) {
-      setHasSynced(true);
+    if (needsSync) {
       (async () => {
         for (const [name, data] of byDriver) {
           await syncDriverExpense(name, data.value);
