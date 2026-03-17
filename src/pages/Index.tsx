@@ -105,6 +105,12 @@ const Index = () => {
     refresh();
   };
 
+  const handleMarkPending = async (id: string) => {
+    await updateExpenseStatus(id, "pendente");
+    toast.success("Voltou para pendente.");
+    refresh();
+  };
+
   const driverDailiesTotal = useMemo(() => {
     return allDriverDailies
       .filter((d) => { const dt = new Date(d.date); return dt.getFullYear() === year && dt.getMonth() === month; })
