@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getVehicles, Expense } from "@/lib/types";
-import { saveDriverDailyAsync, deleteDriverDailyAsync, getVehicleName, getDrivers, addDriver, removeDriver, saveExpense, updateExpenseStatus, deleteExpense } from "@/lib/store";
+import { saveDriverDailyAsync, deleteDriverDailyAsync, getVehicleName, getDrivers, addDriver, removeDriver, updateExpenseStatus } from "@/lib/store";
+import { buildConsolidatedDriverExpenses, getDriverDailyDescription, syncDriverDailyExpenses } from "@/lib/driver-daily-expenses";
 import { useDriverDailies } from "@/hooks/use-driver-dailies";
 import { toast } from "sonner";
 
